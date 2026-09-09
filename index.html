@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RepoLens AI — GitHub Intelligence</title>
+<style>
+:root{--bg:#08090d;--panel:#101219;--panel2:#151823;--text:#f4f6fb;--muted:#8e96a8;--line:#242938;--accent:#8b7cff;--good:#45d483;--warn:#ffca58;--bad:#ff667d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0%,#17142d 0,#08090d 38%);color:var(--text);font:14px Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+.container{max-width:1180px;margin:auto;padding:28px 22px}.nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:52px}.brand{font-weight:800;font-size:20px;letter-spacing:-.5px}.brand span{color:var(--accent)}.pill{border:1px solid var(--line);padding:7px 11px;border-radius:999px;color:var(--muted);font-size:12px}
+.hero{text-align:center;max-width:850px;margin:auto}.eyebrow{color:#aaa1ff;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-size:11px}.hero h1{font-size:58px;line-height:1.02;margin:15px 0 18px;letter-spacing:-3px}.hero h1 span{color:var(--accent)}.hero p{color:var(--muted);font-size:17px;line-height:1.6;margin:0 auto 28px;max-width:680px}
+.search{display:flex;gap:10px;background:var(--panel);border:1px solid var(--line);padding:8px;border-radius:14px;max-width:760px;margin:auto;box-shadow:0 15px 60px #0008}.search input{flex:1;background:transparent;border:0;outline:0;color:white;padding:13px;font-size:14px}.btn{border:0;background:var(--accent);color:white;padding:12px 20px;border-radius:9px;font-weight:750;cursor:pointer}.btn:hover{filter:brightness(1.1)}.demo{margin-top:12px;color:#697184;font-size:12px;cursor:pointer}
+.hidden{display:none}.profile{margin-top:48px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px}.profileTop{display:flex;align-items:center;gap:16px}.avatar{width:58px;height:58px;border-radius:14px}.repoName{font-size:22px;font-weight:800}.desc{color:var(--muted);margin-top:5px}.stats{display:flex;gap:18px;margin-top:15px;color:#b8bfd0;font-size:12px}.stats b{color:white}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px}.label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px}.value{font-size:29px;font-weight:800;margin-top:7px}.sub{color:var(--muted);font-size:11px;margin-top:5px}
+.score{display:flex;align-items:center;gap:18px}.ring{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--score)*1%),#252938 0)}.ring:after{content:attr(data-score);width:56px;height:56px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-weight:800}
+.section{margin-top:14px}.section h2{font-size:16px;margin:0 0 12px}.bars{display:grid;gap:10px}.barrow{display:grid;grid-template-columns:100px 1fr 45px;gap:10px;align-items:center;color:#c5cbd8;font-size:12px}.track{height:7px;background:#252938;border-radius:9px;overflow:hidden}.fill{height:100%;background:var(--accent);border-radius:9px}.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{background:#1b1f2b;border:1px solid #2b3040;padding:7px 10px;border-radius:8px;color:#cbd0dd;font-size:12px}
+.columns{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-top:14px}.tree{font-family:ui-monospace,monospace;color:#b9c0ce;line-height:1.8;font-size:12px}.tree span{color:var(--accent)}.insight{border-left:3px solid var(--accent);padding:10px 12px;background:#151625;margin-bottom:9px;border-radius:0 9px 9px 0;color:#cbd0dc;line-height:1.5}.loading{text-align:center;padding:55px;color:var(--muted)}.error{color:#ff8193;text-align:center;margin:22px}
+footer{text-align:center;color:#555d6d;font-size:11px;padding:38px}
+@media(max-width:800px){.hero h1{font-size:42px}.grid{grid-template-columns:repeat(2,1fr)}.columns{grid-template-columns:1fr}.search{flex-direction:column}.btn{width:100%}}
+</style>
+</head>
+<body>
+<div class="container">
+<nav class="nav"><div class="brand">Repo<span>Lens</span> AI</div><div class="pill">GitHub Repository Intelligence</div></nav>
+<section class="hero">
+<div class="eyebrow">Understand any repository in seconds</div>
+<h1>Your GitHub repo,<br><span>under the microscope.</span></h1>
+<p>Turn repository metadata into actionable engineering insights — architecture, stack, health signals, and recruiter-readiness.</p>
+<div class="search"><input id="url" placeholder="Paste a public GitHub URL  •  github.com/owner/repo"><button class="btn" onclick="analyze()">Analyze repository</button></div>
+<div class="demo" onclick="document.getElementById('url').value='https://github.com/vercel/next.js';analyze()">Try a live demo →</div>
+</section>
+<div id="output"></div>
+<footer>RepoLens AI · Built with GitHub REST API · No repository data is stored</footer>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+function parse(v){v=v.trim().replace(/\/$/,'');let m=v.match(/github\.com\/([^/]+)\/([^/#?]+)/i);return m?{owner:m[1],repo:m[2]}:null}
+async function get(path){let r=await fetch('https://api.github.com'+path,{headers:{Accept:'application/vnd.github+json'}});if(!r.ok)throw Error(r.status+' '+r.statusText);return r.json()}
+async function analyze(){
+ const p=parse($('url').value); if(!p){$('output').innerHTML='<div class="error">Please enter a valid public GitHub repository URL.</div>';return}
+ $('output').innerHTML='<div class="profile loading">Analyzing repository signals…</div>';
+ try{
+  const r=await get(`/repos/${p.owner}/${p.repo}`);
+  const [langs,tree]=await Promise.all([get(`/repos/${p.owner}/${p.repo}/languages`),get(`/repos/${p.owner}/${p.repo}/git/trees/${r.default_branch}?recursive=1`)]);
+  const files=tree.tree||[], names=files.map(x=>x.path), totalBytes=Object.values(langs).reduce((a,b)=>a+b,0);
+  const langRows=Object.entries(langs).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k,v])=>[k,Math.round(v/totalBytes*100)]);
+  const hasTests=names.some(x=>/(test|spec)/i.test(x)), hasCI=names.some(x=>x.startsWith('.github/workflows/'));
+  const hasDocs=names.some(x=>/^readme/i.test(x)), hasLicense=names.some(x=>/^license/i.test(x));
+  const health=Math.min(100,Math.round(45+(hasTests?15:0)+(hasCI?15:0)+(hasDocs?10:0)+(hasLicense?5:0)+(r.stargazers_count>50?5:0)+(r.open_issues_count<20?5:0)));
+  const recruit=Math.min(100,Math.round(health*.75+(r.description?10:0)+(langRows.length>=2?8:0)+(r.homepage?7:0)));
+  const treeLines=files.filter(x=>x.type==='blob').slice(0,14).map(x=>`<div>├─ ${x.path}</div>`).join('');
+  const insights=[];
+  insights.push(hasCI?'CI/CD detected — automated delivery practices are visible.':'Add GitHub Actions to demonstrate automated testing and CI/CD.');
+  insights.push(hasTests?'Test-related files detected — good signal for maintainability.':'Add a small test suite; recruiters often look for evidence of engineering discipline.');
+  insights.push(hasDocs?'README detected — documentation is present.':'Upgrade the README with screenshots, architecture, setup and a demo link.');
+  insights.push(r.open_issues_count>20?'Issue backlog is relatively high — consider triaging or labeling issues.':'Issue backlog looks manageable.');
+  $('output').innerHTML=`
+  <section class="profile">
+   <div class="profileTop"><img class="avatar" src="${r.owner.avatar_url}"><div><div class="repoName">${r.full_name}</div><div class="desc">${r.description||'No repository description provided.'}</div></div></div>
+   <div class="stats"><span>★ <b>${r.stargazers_count}</b> stars</span><span>⑂ <b>${r.forks_count}</b> forks</span><span>◉ <b>${r.open_issues_count}</b> issues</span><span>Updated <b>${new Date(r.updated_at).toLocaleDateString()}</b></span></div>
+  </section>
+  <div class="grid">
+   <div class="card score"><div class="ring" style="--score:${health}" data-score="${health}"></div><div><div class="label">Repo health</div><div class="sub">Engineering signals</div></div></div>
+   <div class="card score"><div class="ring" style="--score:${recruit}" data-score="${recruit}"></div><div><div class="label">Recruiter ready</div><div class="sub">Portfolio signals</div></div></div>
+   <div class="card"><div class="label">Files</div><div class="value">${files.length}</div><div class="sub">Indexed repository items</div></div>
+   <div class="card"><div class="label">Primary stack</div><div class="value">${langRows[0]?.[0]||'—'}</div><div class="sub">Detected from source bytes</div></div>
+  </div>
+  <div class="columns">
+   <div>
+    <div class="card section"><h2>Language distribution</h2><div class="bars">${langRows.map(([k,v])=>`<div class="barrow"><span>${k}</span><div class="track"><div class="fill" style="width:${v}%"></div></div><span>${v}%</span></div>`).join('')}</div></div>
+    <div class="card section"><h2>Detected stack</h2><div class="chips">${langRows.map(x=>`<span class="chip">${x[0]}</span>`).join('')}${hasCI?'<span class="chip">GitHub Actions</span>':''}${hasTests?'<span class="chip">Testing</span>':''}</div></div>
+   </div>
+   <div>
+    <div class="card section"><h2>Repository structure</h2><div class="tree">${treeLines||'No files returned.'}</div></div>
+    <div class="card section"><h2>AI engineering insights</h2>${insights.map(x=>`<div class="insight">${x}</div>`).join('')}</div>
+   </div>
+  </div>`;
+ }catch(e){$('output').innerHTML=`<div class="error">Could not analyze this repository. Make sure it is public and the URL is correct.</div>`}
+}
+</script>
+</body></html>
